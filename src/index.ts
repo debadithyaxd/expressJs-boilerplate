@@ -1,4 +1,4 @@
-import "./config/moduleAlias";
+import "./config/preload";
 import app from "./app";
 import { logger } from "./config/logger";
 import config from "./config";

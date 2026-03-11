@@ -5,18 +5,20 @@ import config from "./index";
 
 const isProduction = config.nodeEnv === "production";
 
-const loggerFormat = winston.format.printf(({ level, message, timestamp, ...meta }) => {
-  const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-  return `${timestamp} ${level}: ${message}${metaStr}`;
-});
+const loggerFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.printf(({ level, message, timestamp, ...meta }) => {
+    const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
+    return `${timestamp} ${level}: ${message}${metaStr}`;
+  }),
+);
 
 const transports: winston.transport[] = [
   new winston.transports.Console({
-    level: isProduction ? 'info' : 'debug',
+    level: isProduction ? "info" : "debug",
     format: winston.format.combine(
       winston.format.colorize(),
-      winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-      loggerFormat
+      loggerFormat,
     ),
   }),
 ];
@@ -31,7 +33,7 @@ if (isProduction) {
       maxFiles: "14d",
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json()
+        winston.format.json(),
       ),
     }),
     new DailyRotateFile({
@@ -42,38 +44,29 @@ if (isProduction) {
       maxFiles: "14d",
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json()
+        winston.format.json(),
       ),
-    })
+    }),
   );
 } else {
   // Simple file logs for development
   transports.push(
     new winston.transports.File({
       filename: path.join("logs", "combined.log"),
-      level: 'debug',
-      format: winston.format.combine(
-        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        loggerFormat
-      ),
+      level: "debug",
+      format: loggerFormat
     }),
     new winston.transports.File({
       filename: path.join("logs", "error.log"),
       level: "error",
-      format: winston.format.combine(
-        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        loggerFormat
-      ),
-    })
+      format: loggerFormat
+    }),
   );
 }
 
 export const logger = winston.createLogger({
   level: config.logLevel,
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    loggerFormat
-  ),
+  format: loggerFormat,
   transports,
   exitOnError: false,
 });

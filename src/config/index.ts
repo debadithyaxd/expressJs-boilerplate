@@ -1,59 +1,34 @@
-import dotenv from 'dotenv';
-import path from 'path';
+import z from "zod";
 
-// Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+export const configSchema = z.object({
+  nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
+  port: z.coerce.number().default(3000),
+  databaseUrl: z.url(),
+  redis: z.object({
+    host: z.string().min(1).default('127.0.0.1'),
+    port: z.coerce.number().default(6379),
+    db: z.coerce.number().default(0),
+  }),
+  jwt: z.object({
+    secret: z.string().min(32).default('default-secret-change-in-production'),
+    expiresIn: z.string().default('7d'),
+  }),
+  bcryptRounds: z.coerce.number().int().default(12),
+  rateLimit: z.object({
+    windowMs: z.coerce.number().int().default(900000),
+    maxRequests: z.coerce.number().int().default(100),
+  }),
+  logLevel: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),
+  corsOrigin: z.string().default('http://localhost:3000'),
+});
 
-interface Config {
-  nodeEnv: string;
-  port: number;
-  databaseUrl: string;
-  redis: {
-    host: string;
-    port: number;
-    db: number;
-  };
-  jwt: {
-    secret: string;
-    expiresIn: string;
-  };
-  bcryptRounds: number;
-  rateLimit: {
-    windowMs: number;
-    maxRequests: number;
-  };
-  logLevel: string;
-  corsOrigin: string;
+const parsed = configSchema.safeParse(process.env);
+
+if(!parsed.success){
+  console.error("❌ Invalid or missing environment variables:");
+  console.log(parsed.error.message);
+  process.exit(1)
 }
-
-const config: Config = {
-  nodeEnv: process.env.NODE_ENV || 'development',
-  port: Number.parseInt(process.env.PORT || '3000', 10),
-  databaseUrl: process.env.DATABASE_URL || '',
-  redis: {
-    host: process.env.REDIS_HOST || '127.0.0.1',
-    port: Number.parseInt(process.env.REDIS_PORT || '6379', 10),
-    db: Number.parseInt(process.env.REDIS_DB || '0', 10),
-  },
-  jwt: {
-    secret: process.env.JWT_SECRET || 'default-secret-change-in-production',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  },
-  bcryptRounds: Number.parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
-  rateLimit: {
-    windowMs: Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
-    maxRequests: Number.parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
-  },
-  logLevel: process.env.LOG_LEVEL || 'info',
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-};
-
-// Validate required environment variables
-const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
-const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-
-if (missingEnvVars.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
-}
+const config = parsed.data;
 
 export default config;
